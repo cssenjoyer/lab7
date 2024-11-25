@@ -1,0 +1,118 @@
+/*Дан символ C и строки S, S0. Удалить все слова начинающиеся с
+символа C из строки S которых нет в строке S0*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+typedef int(*wordcheckfunc)(const char*, const char*);
+
+size_t my_strlen(const char* str) {
+    size_t len = 0;
+    while (str[len] != '\0') len++;
+    return len;
+}
+
+char* my_strdup(const char* str) {
+    size_t len = my_strlen(str) + 1;
+    char* copy = (char*)malloc(len * sizeof(char));
+    if (!copy) return NULL;
+    for (size_t i = 0; i < len; i++) copy[i] = str[i];
+    return copy;
+}
+
+int my_strcmp(const char* s1, const char* s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char*)s1 - *(unsigned char*)s2;
+}
+
+char* get_next_word(const char** str) {
+    while (**str && isspace(**str)) (*str)++;
+    if (!**str) return NULL;
+
+    const char* start = *str;
+    while (**str && !isspace(**str)) (*str)++;
+
+    size_t len = *str - start;
+    char* word = (char*)malloc((len + 1) * sizeof(char));
+    if (!word) return NULL;
+
+    for (size_t i = 0; i < len; i++) word[i] = start[i];
+    word[len] = '\0';
+    return word;
+}
+
+int is_word_in_string(const char* word, const char* str) {
+    const char* ptr = str;
+    char* curr_word;
+    while ((curr_word = get_next_word(&ptr)) != NULL) {
+        if (my_strcmp(curr_word, word) == 0) {
+            free(curr_word);
+            return 1;
+        }
+        free(curr_word);
+    }
+    return 0;
+}
+
+char* filter_words(const char* S, const char* S0, char C, wordcheckfunc check_func) {
+    const char* ptr = S;
+    char* result = NULL;
+    size_t result_len = 0;
+
+    char* curr_word;
+    while ((curr_word = get_next_word(&ptr)) != NULL) {
+        if (curr_word[0] == C && !check_func(curr_word, S0)) {
+            free(curr_word);
+            continue;
+        }
+
+        size_t word_len = my_strlen(curr_word);
+        char* temp = (char*)realloc(result, (result_len + word_len + 2) * sizeof(char));
+        if (!temp) {
+            free(curr_word);
+            free(result);
+            return NULL;
+        }
+        result = temp;
+
+        for (size_t i = 0; i < word_len; i++) result[result_len++] = curr_word[i];
+        result[result_len++] = ' ';
+        free(curr_word);
+    }
+
+    if (result_len > 0) result[result_len - 1] = '\0';
+    else result = my_strdup("");
+
+    return result;
+}
+
+int main() {
+    char* S = my_strdup("random words cat car crash hehe xd");
+    char* S0 = my_strdup("car hehe");
+    char C = 'c';
+
+    if (!S || !S0) {
+        printf("Error: Memory allocation failed.\n");
+        free(S);
+        free(S0);
+        return 1;
+    }
+
+    char* result = filter_words(S, S0, C, is_word_in_string);
+    if (!result) {
+        printf("Error: Memory allocation failed during filtering.\n");
+        free(S);
+        free(S0);
+        return 1;
+    }
+
+    printf("Result: \"%s\"\n", result);
+
+    free(S);
+    free(S0);
+    free(result);
+    return 0;
+}
