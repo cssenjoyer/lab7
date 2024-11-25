@@ -1,0 +1,172 @@
+/*Отсортировать методом слияния массив строк по возрастанию
+количества слов*/
+#include <stdio.h>
+#include <stdlib.h>
+
+// Функция для подсчета количества слов в строке
+int count_words(const char* str) {
+    int count = 0;
+    int in_word = 0;
+
+    while (*str) {
+        if (*str != ' ' && *str != '\t' && *str != '\n') {
+            if (!in_word) {
+                in_word = 1;
+                count++;
+            }
+        }
+        else {
+            in_word = 0;
+        }
+        str++;
+    }
+
+    return count;
+}
+
+// Функция для слияния двух отсортированных подмассивов строк
+void merge(char** arr, int left, int mid, int right, int (*wordCounter)(const char*)) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+
+    // Создание временных массивов строк с malloc
+    char** leftArr = (char**)malloc(n1 * sizeof(char*));
+    char** rightArr = (char**)malloc(n2 * sizeof(char*));
+
+    if (leftArr == NULL || rightArr == NULL) {
+        printf("Memory allocation failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < n1; i++) {
+        leftArr[i] = arr[left + i];
+    }
+    for (int j = 0; j < n2; j++) {
+        rightArr[j] = arr[mid + 1 + j];
+    }
+
+    // Слияние
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        if (wordCounter(leftArr[i]) <= wordCounter(rightArr[j])) {
+            arr[k] = leftArr[i];
+            i++;
+        }
+        else {
+            arr[k] = rightArr[j];
+            j++;
+        }
+        k++;
+    }
+
+    // Копирование оставшихся элементов
+    while (i < n1) {
+        arr[k] = leftArr[i];
+        i++;
+        k++;
+    }
+
+    while (j < n2) {
+        arr[k] = rightArr[j];
+        j++;
+        k++;
+    }
+
+    // Освобождение памяти временных массивов
+    free(leftArr);
+    free(rightArr);
+}
+
+// Функция сортировки методом слияния
+void merge_sort(char** arr, int left, int right, int (*wordCounter)(const char*)) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+
+        merge_sort(arr, left, mid, wordCounter);
+        merge_sort(arr, mid + 1, right, wordCounter);
+
+        merge(arr, left, mid, right, wordCounter);
+    }
+}
+
+// Функция для ввода строки с динамическим выделением памяти
+char* read_string() {
+    int size = 10;
+    int length = 0;
+    char* str = (char*)malloc(size * sizeof(char));
+    char ch;
+
+    if (str == NULL) {
+        printf("Memory allocation failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((ch = getchar()) != '\n' && ch != EOF) {
+        // Если строка слишком короткая, выделяем больше памяти
+        if (length >= size - 1) {
+            size *= 2;
+            char* new_str = (char*)realloc(str, size * sizeof(char));
+            if (new_str == NULL) {
+                printf("Memory allocation failed!\n");
+                free(str); // Освободить старую память, если realloc не удался
+                exit(EXIT_FAILURE);
+            }
+            str = new_str; // Переназначаем указатель на новый блок памяти
+        }
+        str[length++] = ch;
+    }
+    str[length] = '\0'; // Завершающий нулевой символ
+
+    return str;
+}
+
+// Функция для вывода массива строк
+void print_array(char** arr, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%s\n", arr[i]);
+    }
+}
+
+int main() {
+    int n;
+
+    // Ввод количества строк
+    printf("Enter number of strings: ");
+    while (1) {
+        if (scanf_s("%d", &n) == 1 && n > 0) {
+            break;
+        }
+        else {
+            printf("Invalid input! Please enter a positive integer: ");
+            while (getchar() != '\n');  // Очистка буфера ввода
+        }
+    }
+
+    // Чтение строк
+    char** arr = (char**)malloc(n * sizeof(char*));
+    if (arr == NULL) {
+        printf("Memory allocation failed!\n");
+        return 1;
+    }
+
+    printf("Enter the strings:\n");
+    getchar();  // Очистка буфера после scanf
+    for (int i = 0; i < n; i++) {
+        arr[i] = read_string();
+    }
+
+    // Сортировка строк методом слияния по количеству слов
+    merge_sort(arr, 0, n - 1, count_words);
+
+    // Вывод отсортированных строк
+    printf("\nSorted strings by word count:\n");
+    print_array(arr, n);
+
+    // Освобождение памяти
+    for (int i = 0; i < n; i++) {
+        free(arr[i]);
+    }
+    free(arr);
+
+    return 0;
+}
