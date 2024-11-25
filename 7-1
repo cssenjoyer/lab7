@@ -1,0 +1,187 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+// Реализация custom_getline
+size_t custom_getline(char** lineptr, size_t* n, FILE* stream) {
+    if (lineptr == NULL || n == NULL || stream == NULL) {
+        return -1;
+    }
+
+    size_t size = *n;
+    char* buffer = *lineptr;
+    int c;
+    size_t len = 0;
+
+    if (buffer == NULL) {
+        size = 128; // Начальный размер буфера
+        buffer = (char*)malloc(size);
+        if (buffer == NULL) {
+            return -1;
+        }
+    }
+
+    while ((c = getc(stream)) != EOF && c != '\n') {
+        if (len + 1 >= size) {
+            size_t new_size = size * 2;
+            char* new_buffer = (char*)realloc(buffer, new_size);
+            if (new_buffer == NULL) {
+                free(buffer);
+                return -1;
+            }
+            buffer = new_buffer;
+            size = new_size;
+        }
+        buffer[len++] = c;
+    }
+
+    if (len == 0 && c == EOF) {
+        free(buffer);
+        return -1;
+    }
+
+    buffer[len] = '\0';
+    *lineptr = buffer;
+    *n = size;
+
+    return len;
+}
+
+// Функция для подсчёта длины строки
+size_t my_strlen(const char* str) {
+    size_t length = 0;
+    while (str[length] != '\0') {
+        length++;
+    }
+    return length;
+}
+
+// Функция для сравнения строк
+int my_strcmp(const char* str1, const char* str2) {
+    while (*str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+    }
+    return *(unsigned char*)str1 - *(unsigned char*)str2;
+}
+
+// Функция для извлечения следующего слова из строки
+char* get_next_word(const char* str, size_t* index) {
+    size_t start = *index;
+
+    // Пропускаем неалфавитные символы
+    while (str[start] && !isalnum(str[start])) start++;
+
+    if (!str[start]) return NULL; // Если строка закончилась
+
+    size_t end = start;
+    while (str[end] && isalnum(str[end])) end++; // Находим конец слова
+
+    size_t word_len = end - start;
+    char* word = (char*)malloc((word_len + 1) * sizeof(char)); // Память под слово
+    if (!word) {
+        printf("Ошибка выделения памяти\n");
+        exit(1);
+    }
+
+    for (size_t i = 0; i < word_len; i++) {
+        word[i] = tolower(str[start + i]); // Приведение к нижнему регистру
+    }
+    word[word_len] = '\0'; // Завершающий символ
+    *index = end; // Обновляем текущий индекс
+    return word;
+}
+
+// Функция для нахождения самого частого слова
+char* find_most_frequent_word(char* str) {
+    char** words = NULL; // Массив указателей на слова
+    int* counts = NULL;  // Массив частот
+    size_t word_count = 0;
+
+    size_t index = 0;
+    char* word;
+
+    // Разделяем строку на слова
+    while ((word = get_next_word(str, &index)) != NULL) {
+        int found = 0;
+        for (size_t i = 0; i < word_count; i++) {
+            if (my_strcmp(words[i], word) == 0) {
+                counts[i]++;
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            // Расширяем массив для нового слова
+            char** temp_words = (char**)realloc(words, (word_count + 1) * sizeof(char*));
+            if (!temp_words) {
+                printf("Ошибка выделения памяти\n");
+                exit(1);
+            }
+            words = temp_words;
+
+            int* temp_counts = (int*)realloc(counts, (word_count + 1) * sizeof(int));
+            if (!temp_counts) {
+                printf("Ошибка выделения памяти\n");
+                exit(1);
+            }
+            counts = temp_counts;
+
+            words[word_count] = word;
+            counts[word_count] = 1;
+            word_count++;
+        }
+        else {
+            free(word); // Освобождаем память для дубликатов
+        }
+    }
+
+    // Поиск самого частого слова
+    int max_count = 0;
+    char* most_frequent_word = NULL;
+    for (size_t i = 0; i < word_count; i++) {
+        if (counts[i] > max_count) {
+            max_count = counts[i];
+            most_frequent_word = words[i];
+        }
+    }
+
+    // Освобождение памяти, кроме самого частого слова
+    for (size_t i = 0; i < word_count; i++) {
+        if (words[i] != most_frequent_word) {
+            free(words[i]);
+        }
+    }
+    free(words);
+    free(counts);
+
+    return most_frequent_word;
+}
+
+// Основная программа
+int main() {
+    char* input = NULL;
+    size_t size = 0;
+
+    printf("Введите строку: ");
+    if (custom_getline(&input, &size, stdin) == -1) {
+        printf("Ошибка чтения строки\n");
+        return 1;
+    }
+
+    // Поиск самого частого слова
+    char* most_frequent_word = find_most_frequent_word(input);
+
+    // Вывод результата
+    if (most_frequent_word) {
+        printf("Самое часто встречающееся слово: %s\n", most_frequent_word);
+        free(most_frequent_word); // Освобождаем память для самого частого слова
+    }
+    else {
+        printf("Слов в строке не найдено.\n");
+    }
+
+    free(input); // Освобождаем память для ввода
+    return 0;
+}
